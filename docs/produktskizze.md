@@ -41,11 +41,15 @@ beide Europacup-Stationen). Gebaut wird in Abschnitten, veröffentlicht als „V
 | Abschnitt | Inhalt | Danach |
 |---|---|---|
 | A | Steuerung auf dem iPhone, Zeitjagd auf Ruhpolding | **Praxistest mit einigen Fahrern** – trägt das Fahrgefühl? |
-| B | Gruppenrunde (Code/QR, Name, Rangliste, Geister); kleiner Speicher-Server, keine Konten | Test auf einem Lehrgang |
+| B | Gruppenrunde (Code/QR, Rangliste, Geister); kleiner Server; **Profil ohne Anmeldung** (Name + zufällige Gerätekennung, jeder Lauf gehört einem Profil) | Test auf einem Lehrgang |
 | C | Götschen; Parallel-Duell mit zweitem Kurs und KO-Baum | |
 | D | Cup über beide Strecken | Version 1 |
 
-**Gehört ausdrücklich nicht dazu:** Live-Mehrspieler in Echtzeit, Konten und Anmeldung, Weltcup und weitere
+**Entschieden (Nachtrag):** Profil statt Konto. Kein Passwort, keine Mail; Ranglisten, Bestzeiten und
+Nutzungszahlen hängen an der Gerätekennung. Ein Konto (Mailadresse, Login-Link) ist eine spätere, freiwillige
+Aufwertung des Profils, kein Umbau.
+
+**Gehört ausdrücklich nicht dazu:** Live-Mehrspieler in Echtzeit, Konten mit Mail oder Passwort, Weltcup und weitere
 Strecken, Werbung über einen Ad-Server, kalibrierte Simulation gegen echte Zeiten, Geister echter Kaderfahrer,
 App-Store-Apps. Cup- und Verbandsnamen sowie Logos erst nach Freigabe (siehe 5).
 
@@ -71,7 +75,18 @@ App-Store-Apps. Cup- und Verbandsnamen sowie Logos erst nach Freigabe (siehe 5).
 - Wem gehört die Kurssetzung eines Rennens, und wie kommt der Kurs vom Renntag ins Spiel („Rennen der Woche“)?
 - Werbemodell: Sponsorenfläche der Veranstaltung oder Ad-Server; verträgt sich das mit bestehenden
   Sponsorenverträgen von Verband und Veranstaltern?
-- Datenschutz bei Namen in Ranglisten, besonders bei Minderjährigen.
+- Datenschutz bei Namen in Ranglisten, besonders bei Minderjährigen: Auf welcher Rechtsgrundlage läuft das
+  Profil, und ab wann (Mailadresse, Konto) braucht es die Einwilligung der Eltern? Mit dem
+  Datenschutzbeauftragten des Verbands klären. Recherchiert (2026-11-18, Fachbeiträge, keine Rechtsauskunft):
+  Für eine Einwilligung bei Online-Diensten gilt in Deutschland die Grenze 16 Jahre (Art. 8 DSGVO), darunter
+  müssen die Eltern zustimmen; eine selbst eingetragene Altersangabe gilt als unzureichend. Die „13“ der
+  großen Plattformen ist deren Nutzungsbedingung, nicht die Datenschutzgrenze. Gesetzliche Mindestalter für
+  Social Media sind in Deutschland und der EU in Arbeit; ob sie ein Spiel beträfen, ist offen.
+- PocketBase als Ausgangspunkt für den Server (Kandidat). Recherchiert: Serverlogik läuft in einer eingebauten
+  JavaScript-Umgebung (goja), nicht in Node, nur synchron und ohne Node- oder Browser-Schnittstellen. Reine
+  Rechnung wie `physics.js` sollte dort grundsätzlich möglich sein, ist aber auszuprobieren (Modulformat,
+  gleiche Zahlenergebnisse wie im Browser); sonst kleiner Node-Dienst daneben. Vor Version 1.0 ist
+  Abwärtskompatibilität nicht zugesagt; den aktuellen Versionsstand vor Abschnitt B auf der Projektseite prüfen.
 
 ## Nächste Arbeitsschritte
 1. **Abschnitt A auf dem iPhone:** Seite per GitHub Pages bereitstellen (nach Beos Ja), Sensorachsen und
