@@ -107,12 +107,12 @@ Runde eröffnet und darin Namen oder Läufe entfernen darf), Verwalter.
 - **Native App:** neue Hülle um denselben Fahrkern, falls Safari bei Sensoren oder Bildrate nicht reicht.
 
 ## Risiken der Architektur
-1. **Rechnen alle Geräte gleich?** Der Fahrkern nutzt `Math.sin`, `cos`, `atan2`, `hypot` und `**`. Deren letzte
-   Stelle ist zwischen JavaScript-Umgebungen (Chrome, Safari, Node, PocketBase) nicht garantiert gleich. Ein
-   Lauf vom iPhone könnte auf dem Server oder als Geist auf einem anderen Handy leicht anders enden; ein
-   knapper Torfehler kippt dann. **Vor Abschnitt B prüfen:** dieselbe Aufzeichnung auf Mac, iPhone und im
-   Prüfer abspielen und den Endzustand vergleichen. Falls sie abweichen: diese Funktionen im Fahrkern durch
-   eigene ersetzen, die nur aus Grundrechenarten und Wurzel bestehen (die sind überall gleich).
+1. **Rechnen alle Geräte gleich?** Gemessen am 2026-11-18: `Math.sin`, `cos` und `atan2` liefern in Node 24 und
+   Chrome 156 verschiedene letzte Stellen, derselbe Lauf lief schon auf dem Mac auseinander. Seit Physik 2
+   nutzt der Fahrkern deshalb eigene Funktionen (`dsin`, `dcos`, `datan2`, `dhypot`), die nur aus
+   Grundrechenarten und Wurzel bestehen; Node und Chrome zeigen seitdem dieselbe Prüfsumme.
+   **Noch offen:** Safari auf dem iPhone und die Umgebung des Prüfers (PocketBase). Kontrolle: Die Seite zeigt
+   unten links „Physik · Strecke · Prüfsumme“, `node selftest.mjs <dieselbe Strecke>` muss dasselbe ausgeben.
 2. **Nachstellen der Physik entwertet Zeiten.** Gewollt (siehe Format), aber während der Abstimmung in
    Abschnitt A sind Ranglisten kurzlebig. Öffentliche Wertungen erst, wenn die Physik steht.
 3. **PocketBase vor Version 1.0:** Updates können Umbauten erzwingen. Deshalb die Geschäftsregeln (Prüfer,
@@ -120,12 +120,14 @@ Runde eröffnet und darin Namen oder Läufe entfernen darf), Verwalter.
 4. **Ein einzelner Server.** Für Lehrgänge und einen Cup genug; ein Ausfall trifft wegen Leitgedanke 3 nur
    die Vergleiche.
 
-## Jetzt festlegen (Abschnitt A, noch ohne Server)
-1. Physik-Versionsnummer in `physics.js` und Streckenprüfsumme in jede Aufzeichnung; der gespeicherte Geist
-   wird verworfen, wenn eines nicht passt.
-2. Fahrkern bleibt frei von Bildschirm, Uhr, Zufall und Fremdbibliotheken.
-3. Der Selbsttest gibt eine Prüfsumme des Endzustands aus; dieselbe Zahl zeigt die Seite auf dem iPhone an.
-   Das beantwortet Risiko 1 nebenbei beim Praxistest.
+## Festgelegt in Abschnitt A (umgesetzt, noch ohne Server)
+1. Physik-Versionsnummer (`VERSION` in `physics.js`) und Streckenprüfsumme stehen in jeder Aufzeichnung; der
+   gespeicherte Geist wird verworfen, wenn eines nicht passt. `VERSION` steigt bei jeder Änderung an der
+   Physik oder an `P`.
+2. Fahrkern bleibt frei von Bildschirm, Uhr, Zufall und Fremdbibliotheken und ruft keine `Math`-Funktionen
+   außer `sqrt`, `abs`, `min`, `max`, `sign`, `floor`, `round` auf.
+3. Selbsttest und Seite geben dieselbe Prüfsumme aus (Endzustand des Autopiloten je Spur). Der Vergleich auf
+   dem iPhone beantwortet den Rest von Risiko 1 beim Praxistest.
 
 ## Bis vor Abschnitt B entscheiden
 PocketBase ja/nein und wo der Prüfer läuft; Betreiber und Standort des

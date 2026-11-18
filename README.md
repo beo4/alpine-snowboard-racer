@@ -19,7 +19,9 @@ Direkt als Datei geöffnet (file://) lädt die Seite nicht, der Browser braucht 
 3. Während des Countdowns das Handy ruhig in der Grundstellung halten: am Ende wird die Nullstellung genommen.
 4. Links/rechts kippen (wie ein Lenkrad) lenkt, Oberkante weg vom Körper = Gewicht nach vorn.
 5. Unten links steht die gemessene Sensor-Rate (Hz) und die Winkel gegen die Nullstellung.
-6. ⚙: Lenk- und Gewichtsbereich in Grad (kleiner = empfindlicher), Lenkung/Gewicht umkehren, Bestzeit löschen.
+6. Ganz unten links stehen „Physik · Strecke · Prüfsumme“. Sie müssen mit der letzten Zeile von
+   `node selftest.mjs "$PWD/tracks/<dieselbe Strecke>.json"` übereinstimmen; sonst rechnet das Gerät anders als der Mac.
+7. ⚙: Lenk- und Gewichtsbereich in Grad (kleiner = empfindlicher), Lenkung/Gewicht umkehren, Bestzeit löschen.
 
 ## Regeln im Spiel
 Am Stubby außen vorbei (Seite ohne lange Stange). Torfehler, Verlassen der Piste (oranges Netz = Korridor aus

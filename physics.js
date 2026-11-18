@@ -14,6 +14,19 @@
 // NOT calibrated against real run times. All tuning sits in P.
 
 export const DT = 1 / 120;
+// Raise on EVERY change to this file or to a value in P: recorded runs are only valid for the version they were ridden with.
+export const VERSION = 2;
+
+// ponytail: 32-bit FNV-1a, enough to tell versions apart, not proof against forgery; use SHA-256 once a server trusts it.
+const fnv = (h, byte) => Math.imul(h ^ byte, 0x01000193);
+const hex = (h) => (h >>> 0).toString(16).padStart(8, '0');
+/** Checksum of a track file (its text). Stored with every recording next to VERSION. */
+export function trackHash(text) { let h = 0x811c9dc5; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); h = fnv(fnv(h, c & 255), c >> 8); } return hex(h); }
+/** Checksum of a ride state, bit-exact. Two devices that compute the same run show the same value. */
+export function checksum(s) {
+  const b = new Uint8Array(new Float64Array([s.x, s.y, s.heading, s.vx, s.vy, s.t, s.steps, s.gate]).buffer);
+  let h = 0x811c9dc5; for (const v of b) h = fnv(h, v); return hex(h);
+}
 
 export const P = {
   G: 9.81,
@@ -35,10 +48,36 @@ export const P = {
   BRAKE: 4.0,         // m/s^2 after the finish
 };
 
+// Own sin, cos, atan2, hypot: only + - * / and sqrt, which give the same bits in every JavaScript engine.
+// Math.sin / cos / atan2 do NOT (measured: Node 24 and Chrome 156 differ in the last bit, runs drift apart).
+// Never call Math.sin, cos, tan, atan2, acos, exp, pow, hypot in this file.
+const HALF_PI = Math.PI / 2;
+const poly = (x2, c) => { let r = 0; for (let i = c.length - 1; i >= 0; i--) r = r * x2 + c[i]; return r; };
+const SIN = [1, -1 / 6, 1 / 120, -1 / 5040, 1 / 362880, -1 / 39916800, 1 / 6227020800, -1 / 1307674368000];
+const COS = [1, -1 / 2, 1 / 24, -1 / 720, 1 / 40320, -1 / 3628800, 1 / 479001600, -1 / 87178291200, 1 / 20922789888000];
+const ATAN = Array.from({ length: 22 }, (_, i) => (i % 2 ? -1 : 1) / (2 * i + 1));
+function sincos(x, q) {                                        // q = 0: sin, 1: cos
+  const k = Math.round(x / HALF_PI), r = x - k * HALF_PI, r2 = r * r, n = (((k + q) % 4) + 4) % 4;
+  const v = n % 2 ? poly(r2, COS) : r * poly(r2, SIN);
+  return n < 2 ? v : -v;
+}
+export const dsin = (x) => sincos(x, 0), dcos = (x) => sincos(x, 1);
+export const dhypot = (x, y) => Math.sqrt(x * x + y * y);
+export function datan2(y, x) {
+  const ax = Math.abs(x), ay = Math.abs(y), hi = ax > ay ? ax : ay;
+  if (hi === 0) return 0;
+  let a = (ax > ay ? ay : ax) / hi, base = 0;                  // a in 0..1
+  if (a > 0.41421356237309503) { a = (a - 1) / (a + 1); base = Math.PI / 4; }   // now |a| <= tan(pi/8)
+  let r = base + a * poly(a * a, ATAN);
+  if (ay > ax) r = HALF_PI - r;
+  if (x < 0) r = Math.PI - r;
+  return y < 0 ? -r : r;
+}
+
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
-const unit = (a) => { const l = Math.hypot(a[0], a[1]); return [a[0] / l, a[1] / l]; };
+const unit = (a) => { const l = dhypot(a[0], a[1]); return [a[0] / l, a[1] / l]; };
 
 /** Turn the exported JSON into what step() needs: ground(x, y) and per-lane gate geometry. */
 export function makeTrack(json) {
@@ -63,8 +102,8 @@ export function makeTrack(json) {
     const fdir = unit(sub(fb, fa));
     let fn = [-fdir[1], fdir[0]]; if (dot(fn, dir) < 0) fn = [-fn[0], -fn[1]];   // finish-line normal, downhill
     return {
-      color: l.color, start: l.start, dir, heading0: Math.atan2(dir[1], dir[0]),
-      finish: { a: fa, dir: fdir, len: Math.hypot(fb[0] - fa[0], fb[1] - fa[1]), n: fn, mid },
+      color: l.color, start: l.start, dir, heading0: datan2(dir[1], dir[0]),
+      finish: { a: fa, dir: fdir, len: dhypot(fb[0] - fa[0], fb[1] - fa[1]), n: fn, mid },
       gates: l.gates.map((q) => ({ turn: q.turn, outer: q.outer, s: dot(sub(q.turn, l.start), dir), side: unit(sub(q.turn, q.outer)) })),
     };
   });
@@ -86,8 +125,8 @@ export function step(track, s, e8, w8) {
   s.weight = run ? clamp(w8, -127, 127) / 127 : 0;
   s.edge += clamp(eIn - s.edge, -P.EDGE_RATE * DT, P.EDGE_RATE * DT);
 
-  const bx = Math.cos(s.heading), by = Math.sin(s.heading), nx = -by, ny = bx;       // board axis, and its left
-  const vLong = s.vx * bx + s.vy * by, vLat = s.vx * nx + s.vy * ny, speed = Math.hypot(s.vx, s.vy);
+  const bx = dcos(s.heading), by = dsin(s.heading), nx = -by, ny = bx;       // board axis, and its left
+  const vLong = s.vx * bx + s.vy * by, vLat = s.vx * nx + s.vy * ny, speed = dhypot(s.vx, s.vy);
 
   // gravity along the snow, as horizontal acceleration: down the fall line
   const hx = (track.ground(s.x + 0.5, s.y) - track.ground(s.x - 0.5, s.y)), hy = (track.ground(s.x, s.y + 0.5) - track.ground(s.x, s.y - 0.5));
@@ -95,7 +134,7 @@ export function step(track, s, e8, w8) {
 
   // the edge: carved arc from the geometry, turning the board
   const phi = Math.abs(s.edge) * P.MAX_EDGE, engage = Math.min(1, phi / P.ENGAGE);
-  const yaw = -Math.sign(s.edge) * engage / (P.SIDECUT * Math.cos(phi)) * vLong;       // rad/s
+  const yaw = -Math.sign(s.edge) * engage / (P.SIDECUT * dcos(phi)) * vLong;       // rad/s
   let ax = gx, ay = gy;
   if (run) {
     // side force of the edge: what keeps the rider on the arc, cancels the side pull of the slope and removes slip, up to the grip
@@ -106,12 +145,12 @@ export function step(track, s, e8, w8) {
     ax += side * nx; ay += side * ny;
     s.heading += yaw * DT;
     if (speed > 0.3) {                                         // a flat board swings into its direction of travel
-      let d = Math.atan2(s.vy, s.vx) - s.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
+      let d = datan2(s.vy, s.vx) - s.heading; d = datan2(dsin(d), dcos(d));
       s.heading += clamp(d, -1, 1) * P.ALIGN * (1 - engage) * Math.min(1, speed / 2) * DT;
     }
     s.vx += ax * DT; s.vy += ay * DT;
     // snow friction and air drag take speed away, they never push the rider backwards
-    const v1 = Math.hypot(s.vx, s.vy);
+    const v1 = dhypot(s.vx, s.vy);
     const lose = (P.G * cos * (P.MU + P.MU_W * s.weight + P.CARVE * s.load) + P.DRAG * v1 * v1) * DT;
     const k = v1 > lose ? (v1 - lose) / v1 : 0;
     s.vx *= k; s.vy *= k;
@@ -119,7 +158,7 @@ export function step(track, s, e8, w8) {
     const nv = Math.max(speed - P.BRAKE * DT, 0), k = speed > 1e-6 ? nv / speed : 0;
     s.vx *= k; s.vy *= k;
   }
-  s.v = Math.hypot(s.vx, s.vy);
+  s.v = dhypot(s.vx, s.vy);
   s.x += s.vx * DT; s.y += s.vy * DT;
   s.t += DT; s.steps++;
   if (!run) return s;

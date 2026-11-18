@@ -1,8 +1,9 @@
 // Game shell: loads a track file, draws it with three.js, feeds the two input values into the
 // physics in fixed steps, records the run and replays the best one as a ghost.
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-import { makeTrack, start, step, DT, P } from './physics.js';
+import { makeTrack, start, step, DT, P, VERSION, trackHash } from './physics.js';
 import { createInput } from './input.js';
+import { fingerprint } from './autopilot.js';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);                       // the data is z-up
 const $ = (id) => document.getElementById(id);
@@ -10,10 +11,12 @@ const COLORS = { red: 0xd8222a, blue: 0x1e5fd0 };
 const trackId = new URLSearchParams(location.search).get('track') || 'ruhpolding_A2_spiel';
 const other = trackId.endsWith('_spiel') ? trackId.slice(0, -6) : trackId + '_spiel';   // planned course <-> easier game course
 
-const json = await (await fetch(`tracks/${trackId}.json`)).json();
+const text = await (await fetch(`tracks/${trackId}.json`)).text();
+const json = JSON.parse(text), HASH = trackHash(text);
 const track = makeTrack(json);
 const input = createInput($('view'));
-$('credit').textContent = `Geodaten: ${json.source} · ${json.name}${json.id.endsWith('_spiel') ? '' : ' · Planungsstand'} · Fahrphysik nicht kalibriert`;
+$('credit').textContent = `Geodaten: ${json.source} · ${json.name}${json.id.endsWith('_spiel') ? '' : ' · Planungsstand'} · Fahrphysik nicht kalibriert` +
+  ` · Physik ${VERSION} · Strecke ${HASH} · Prüfsumme ${fingerprint(track)}`;   // must match `node selftest.mjs <same track>`
 
 // ---------- scene ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $('view'), antialias: true });
@@ -107,12 +110,12 @@ const ghosts = track.lanes.map((L) => makeRider(COLORS[L.color], true));
 function replay(b) { const s = start(track, b.lane); for (let i = 0; !s.finished && i < b.rec.length / 2; i++) step(track, s, b.rec[2 * i], b.rec[2 * i + 1]); return s; }
 function loadBest() {                                            // only kept if it still replays to the same time (physics unchanged)
   try {
-    const o = JSON.parse(localStorage.getItem(KEY)); if (!o) return null;
+    const o = JSON.parse(localStorage.getItem(KEY)); if (!o || o.physics !== VERSION || o.track !== HASH) return null;
     const b = { lane: o.lane, time: o.time, rec: Int8Array.from(atob(o.rec), (c) => c.charCodeAt(0) << 24 >> 24) };
     const s = replay(b); return s.finished && !s.fail && s.time === b.time ? b : null;
   } catch { return null; }
 }
-function saveBest() { try { localStorage.setItem(KEY, JSON.stringify({ lane: best.lane, time: best.time, rec: btoa(String.fromCharCode(...new Uint8Array(best.rec.buffer))) })); } catch {} }
+function saveBest() { try { localStorage.setItem(KEY, JSON.stringify({ physics: VERSION, track: HASH, lane: best.lane, time: best.time, rec: btoa(String.fromCharCode(...new Uint8Array(best.rec.buffer))) })); } catch {} }
 
 function menu(title, text, button = 'Start') { mode = 'menu'; $('oTitle').textContent = title; $('oText').textContent = text; $('go').textContent = button; $('overlay').style.display = 'flex'; }
 function begin() {

@@ -5,11 +5,22 @@
 // - riding straight down is a gate fault, holding one edge leaves the course: out at once, no time
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { makeTrack, start, step, DT } from './physics.js';
-import { pilot } from './autopilot.js';
+import { makeTrack, start, step, DT, VERSION, trackHash, checksum, dsin, dcos, datan2 } from './physics.js';
+import { pilot, fingerprint } from './autopilot.js';
 
 const file = process.argv[2] || new URL('./tracks/ruhpolding_A2.json', import.meta.url);
-const track = makeTrack(JSON.parse(readFileSync(file)));
+const text = readFileSync(file, 'utf8');
+const track = makeTrack(JSON.parse(text));
+
+{ // the physics' own sin, cos, atan2 agree with Math to 1e-13 over the angles a run can reach
+  let err = 0;
+  for (let a = -40; a <= 40; a += 0.00137) {
+    err = Math.max(err, Math.abs(dsin(a) - Math.sin(a)), Math.abs(dcos(a) - Math.cos(a)));
+    for (const r of [1e-3, 1, 250]) err = Math.max(err, Math.abs(datan2(r * Math.sin(a), r * Math.cos(a)) - Math.atan2(Math.sin(a), Math.cos(a))));
+  }
+  for (const [y, x] of [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1]]) err = Math.max(err, Math.abs(datan2(y, x) - Math.atan2(y, x)));
+  assert.ok(err < 1e-13, `own sin/cos/atan2 off by ${err}`);
+  console.log(`eigene sin/cos/atan2: größte Abweichung von Math ${err.toExponential(1)}`); }
 
 function run(lane, keys) {                       // keys: function(state) or recorded Int8Array
   const s = start(track, lane), rec = [];
@@ -28,6 +39,8 @@ for (const lane of [0, 1]) {
   assert.ok(a.s.time > 15 && a.s.time < 60, `${L.color}: time ${a.s.time}`);
   const b = run(lane, a.rec);
   assert.equal(b.s.time, a.s.time); assert.equal(b.s.x, a.s.x); assert.equal(b.s.y, a.s.y); assert.equal(b.s.steps, a.s.steps);
+  assert.equal(checksum(b.s), checksum(a.s)); assert.equal(fingerprint(track).split(' ')[lane], checksum(a.s));
+  { const c = start(track, lane); step(track, c, 1, 0); assert.notEqual(checksum(c), checksum(start(track, lane)), 'checksum blind'); }
   console.log(`${L.color}: ${L.gates.length} Tore, ${a.s.time.toFixed(3)} s, max ${(a.vmax * 3.6).toFixed(0)} km/h, ` +
               `Wiederholung identisch (${a.s.steps} Schritte à ${(DT * 1000).toFixed(2)} ms)`);
 }
@@ -44,4 +57,6 @@ assert.equal(left.s.fail, 'Piste verlassen'); assert.equal(left.s.time, null);
   for (let i = 0; i < 1 / DT; i++) { step(track, s, 127, 0); slip = Math.max(slip, Math.abs(s.slip)); }
   assert.ok(slip > 2 && s.v < 12, `no slip: ${slip}, v ${s.v}`);
   console.log(`15 m/s mit Vollkante: rutscht bis ${slip.toFixed(1)} m/s seitlich, nach 1 s noch ${s.v.toFixed(1)} m/s`); }
-console.log(`geradeaus: ${straight.s.fail} nach ${straight.s.t.toFixed(1)} s, leicht links: ${left.s.fail} nach ${left.s.t.toFixed(1)} s -> ausgeschieden\nselftest ok`);
+console.log(`geradeaus: ${straight.s.fail} nach ${straight.s.t.toFixed(1)} s, leicht links: ${left.s.fail} nach ${left.s.t.toFixed(1)} s -> ausgeschieden`);
+// the page shows the same three values bottom left; they must match on every device
+console.log(`Physik ${VERSION} · Strecke ${trackHash(text)} · Prüfsumme ${fingerprint(track)}\nselftest ok`);
