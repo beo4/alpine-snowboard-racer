@@ -41,15 +41,16 @@ beide Europacup-Stationen). Gebaut wird in Abschnitten, veröffentlicht als „V
 | Abschnitt | Inhalt | Danach |
 |---|---|---|
 | A | Steuerung auf dem iPhone, Zeitjagd auf Ruhpolding | **Praxistest mit einigen Fahrern** – trägt das Fahrgefühl? |
-| B | Gruppenrunde (Code/QR, Rangliste, Geister); kleiner Server; **Profil ohne Anmeldung** (Name + zufällige Gerätekennung, jeder Lauf gehört einem Profil) | Test auf einem Lehrgang |
+| B | Gruppenrunde (Code/QR, Rangliste, Geister); kleiner Server; **Konto** (mindestens Name + Gerätekennung, jeder Lauf gehört einem Konto) | Test auf einem Lehrgang |
 | C | Götschen; Parallel-Duell mit zweitem Kurs und KO-Baum | |
 | D | Cup über beide Strecken | Version 1 |
 
-**Entschieden (Nachtrag):** Profil statt Konto. Kein Passwort, keine Mail; Ranglisten, Bestzeiten und
-Nutzungszahlen hängen an der Gerätekennung. Ein Konto (Mailadresse, Login-Link) ist eine spätere, freiwillige
-Aufwertung des Profils, kein Umbau.
+**Entschieden (Nachtrag):** Zwei Stufen, damit alle angesprochen sind. **Gast:** Zeitjagd frei, ohne jede
+Angabe, alles bleibt im Gerät. **Konto:** alles andere (Gruppenrunde, Parallel-Duell, Cup, Ranglisten).
+Für ein Konto genügen Name und Gerätekennung; die Mailadresse ist freiwillig und nur für den Gerätewechsel
+nötig. Einzelheiten in [architektur.md](architektur.md).
 
-**Gehört ausdrücklich nicht dazu:** Live-Mehrspieler in Echtzeit, Konten mit Mail oder Passwort, Weltcup und weitere
+**Gehört ausdrücklich nicht dazu:** Live-Mehrspieler in Echtzeit, Passwörter, Weltcup und weitere
 Strecken, Werbung über einen Ad-Server, kalibrierte Simulation gegen echte Zeiten, Geister echter Kaderfahrer,
 App-Store-Apps. Cup- und Verbandsnamen sowie Logos erst nach Freigabe (siehe 5).
 
